@@ -1,0 +1,27 @@
+{
+  "name": "Al-Sajdah Legend",
+  "short_name": "Al-Sajdah",
+  "description": "Jejak hafazan al-Quran dengan sistem gamifikasi legend",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "ms",
+  "dir": "ltr"
+}

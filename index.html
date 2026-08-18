@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al-Sajdah Tracker Legend</title>
+    <meta name="theme-color" content="#d4af37">
+    <meta name="description" content="Jejak hafazan al-Quran dengan sistem gamifikasi legend">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Al-Sajdah">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192x192.png">
+    <link rel="apple-touch-icon" href="./icon-192x192.png">
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --bg-color: #0a0e14;
+            --gold: #d4af37;
+            --gold-light: #f7d97b;
+            --text-color: #ffffff;
+            --card-bg: #1a1f26;
+            --card-hover: #232a33;
+            --bronze: #cd7f32;
+            --silver: #c0c0c0;
+            --gold-rank: #ffd700;
+            --diamond: #4fc3f7;
+            --legend: #ab47bc;
+            --mythic: #ff3d7f;
+            --emerald: #1A3A2E;
+            --emerald-light: #2d6a4f;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(171, 71, 188, 0.08) 0%, transparent 50%);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+            padding-bottom: 90px;
+        }
+
+        header { 
+            text-align: center; 
+            border-bottom: 2px solid var(--gold); 
+            padding-bottom: 20px; 
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .header-logo {
+            position: absolute;
+            top: -6px;
+            left: 0;
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            filter: drop-shadow(0 3px 8px rgba(79, 195, 247, 0.35));
+        }
+        h1 {
+            background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: shine 3s linear infinite;
+            font-size: 2em;
+        }
+        @keyframes shine { to { background-position: 200% center; } }
+        .subtitle { color: #ffffff; font-size: 0.9em; margin-top: 5px; }
+
+        /* Auth Status Bar */
+        .auth-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75em;
+        }
+        .auth-status { color: var(--gold); font-weight: 600; }
+        .btn-auth {
+            padding: 6px 12px;
+            border-radius: 15px;
+            border: 1px solid var(--gold);
+            background: transparent;
+            color: var(--gold);
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-auth:hover { background: var(--gold); color: #000; }
+        .btn-auth.logout { border-color: #ff3b30; color: #ff3b30; }
+        .btn-auth.logout:hover { background: #ff3b30; color: #fff; }
+
+        /* ═══ STATS ROW ═══ */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 25px; }
+        .stat-box { background: var(--card-bg); border: 1px solid #2a323d; border-radius: 10px; padding: 15px; text-align: center; }
+        .stat-value { font-size: 1.8em; font-weight: bold; color: var(--gold); }
+        .stat-label { font-size: 0.8em; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ═══ TINGKATAN / SURAH FILTER PANEL ═══ */
+        .filter-panel {
+            background: var(--card-bg);
+            border: 1px solid #2a323d;
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .filter-panel-title {
+            color: var(--gold);
+            font-size: 0.85em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-panel-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+            opacity: 0.4;
+        }
+
+        /* Tingkatan row */
+        .tingkatan-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .tingkatan-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid #2a323d;
+            background: #0f1318;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.82em;
+            font-weight: 700;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+        .tingkatan-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .tingkatan-btn.active {
+            background: var(--emerald);
+            border-color: #2d6a4f;
+            color: #a8e6cf;
+            box-shadow: 0 0 12px rgba(26, 58, 46, 0.5);
+        }
+
+        /* Surah row — shows after tingkatan selected */
+        .surah-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s;
+            opacity: 0;
+        }
+        .surah-row.visible {
+            max-height: 200px;
+            opacity: 1;
+        }
+        .surah-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1.5px solid #2a323d;
+            background: #0f1318;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.78em;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .surah-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+        .surah-btn.active {
+            background: linear-gradient(135deg, #1a1000, #2d1f00);
+            border-color: var(--gold);
+            color: var(--gold-light);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+        }
+        .surah-btn .surah-arabic {
+            font-size: 0.95em;
+            opacity: 0.8;
+        }
+
+        /* Active filter breadcrumb */
+        .active-filter-bar {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #1a2030;
+            font-size: 0.8em;
+            color: #888;
+            flex-wrap: wrap;
+        }
+        .active-filter-bar.visible { display: flex; }
+        .filter-crumb {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #0f1318;
+            border: 1px solid #2a323d;
+            border-radius: 12px;
+            padding: 4px 10px;
+            color: var(--gold);
+            font-weight: 600;
+        }
+        .filter-crumb-clear {
+            cursor: pointer;
+            color: #888;
+            font-size: 1.1em;
+            transition: color 0.2s;
+        }
+        .filter-crumb-clear:hover { color: #ff3b30; }
+        .murid-count-badge {
+            margin-left: auto;
+            background: linear-gradient(135deg, var(--emerald), #2d6a4f);
+            color: #a8e6cf;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 0.85em;
+            font-weight: 700;
+        }
+
+        /* ═══ SEARCH & RANK CONTROLS ═══ */
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+        .search-box {
+            flex: 1; min-width: 200px; padding: 10px 15px; background: var(--card-bg);
+            border: 1px solid var(--gold); border-radius: 25px; color: var(--text-color);
+            font-size: 0.95em; outline: none; transition: all 0.3s;
+        }
+        .search-box:focus { box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .filter-btn {
+            padding: 8px 14px; background: var(--card-bg); border: 1px solid #2a323d;
+            border-radius: 20px; color: var(--text-color); cursor: pointer; font-size: 0.8em; font-weight: bold; transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--gold); }
+        .filter-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+        #refreshBtn {
+            width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold);
+            background: var(--card-bg); color: var(--gold); font-size: 1.2em;
+            cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+        }
+        #refreshBtn:hover { background: var(--gold); color: #000; transform: rotate(180deg); }
+
+        /* ═══ MURID CARDS ═══ */
+        .card-murid {
+            background: var(--card-bg); border: 2px solid #2a323d; border-radius: 15px;
+            padding: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px;
+            cursor: pointer; transition: all 0.3s; animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card-murid:hover { background: var(--card-hover); transform: translateX(5px); border-color: var(--gold); }
+        .card-murid.rank-mythic { border-color: var(--mythic); box-shadow: 0 0 20px rgba(255, 61, 127, 0.3); animation: fadeIn 0.5s ease-out, mythicPulse 2s ease-in-out infinite; }
+        @keyframes mythicPulse { 0%, 100% { box-shadow: 0 0 20px rgba(255, 61, 127, 0.3); } 50% { box-shadow: 0 0 30px rgba(255, 61, 127, 0.6); } }
+        .card-murid.rank-legend { border-color: var(--legend); box-shadow: 0 0 15px rgba(171, 71, 188, 0.25); }
+        .card-murid.rank-diamond { border-color: var(--diamond); }
+
+        /* Rank indicator on left */
+        .rank-position {
+            font-size: 0.75em;
+            font-weight: 800;
+            color: #555;
+            min-width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .rank-position.top-1 { color: var(--gold-rank); font-size: 1.1em; }
+        .rank-position.top-2 { color: var(--silver); font-size: 1em; }
+        .rank-position.top-3 { color: var(--bronze); font-size: 1em; }
+
+        .avatar {
+            width: 60px; height: 60px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.4em; color: #000; flex-shrink: 0;
+            border: 2px solid var(--gold);
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            overflow: hidden; position: relative;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        .progress-container { flex-grow: 1; min-width: 0; }
+        .name-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+        .murid-name { font-weight: bold; font-size: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .murid-kelas { font-size: 0.75em; color: #888; margin-top: 1px; }
+        
+        .rank-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.7em; font-weight: bold; letter-spacing: 1px; color: #000; text-transform: uppercase; }
+        .rank-bronze { background: var(--bronze); } .rank-silver { background: var(--silver); }
+        .rank-gold { background: var(--gold-rank); } .rank-diamond { background: var(--diamond); }
+        .rank-legend { background: var(--legend); color: #fff; }
+        .rank-mythic { background: linear-gradient(90deg, var(--mythic), #ff8fa3, var(--mythic)); background-size: 200% auto; color: #fff; animation: shine 2s linear infinite; }
+
+        .bar-bg { background: #000; height: 12px; border-radius: 6px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; border-radius: 6px; transition: width 1s ease-out; position: relative; }
+        .bar-bronze { background: linear-gradient(90deg, #8b4513, var(--bronze)); }
+        .bar-silver { background: linear-gradient(90deg, #808080, var(--silver)); }
+        .bar-gold { background: linear-gradient(90deg, #b8860b, var(--gold-rank)); }
+        .bar-diamond { background: linear-gradient(90deg, #0288d1, var(--diamond)); }
+        .bar-legend { background: linear-gradient(90deg, #7b1fa2, var(--legend)); }
+        .bar-mythic { background: linear-gradient(90deg, var(--mythic), #ff8fa3, var(--mythic)); background-size: 200% auto; animation: shine 2s linear infinite; }
+        .bar-mythic::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        .info-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.8em; color: #ffffff; flex-wrap: wrap; gap: 8px; }
+        .stats-mini span { margin-right: 10px; }
+
+        /* Surah progress mini badges in card */
+        .surah-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(26, 58, 46, 0.5);
+            border: 1px solid #2d6a4f;
+            border-radius: 8px;
+            padding: 2px 8px;
+            font-size: 0.72em;
+            color: #a8e6cf;
+            font-weight: 600;
+        }
+
+        /* ═══ SECTION HEADER (when surah filter active) ═══ */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #0f1a14, #1a2820);
+            border: 1px solid #2d6a4f;
+            border-radius: 12px;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .section-header-icon {
+            font-size: 1.8em;
+        }
+        .section-header-info { flex: 1; }
+        .section-header-surah {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: var(--gold-light);
+        }
+        .section-header-arabic {
+            font-size: 1.1em;
+            color: var(--gold);
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+        .section-header-meta {
+            font-size: 0.78em;
+            color: #888;
+            margin-top: 4px;
+        }
+        .section-avg-bar {
+            text-align: right;
+        }
+        .section-avg-value {
+            font-size: 1.6em;
+            font-weight: 800;
+            color: var(--gold);
+        }
+        .section-avg-label {
+            font-size: 0.7em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Galaxy */
+        .galaxy-container {
+            position: relative; width: 100%; height: 80px;
+            background: radial-gradient(ellipse at center, #0f1318 0%, #000 100%);
+            border-radius: 10px; overflow: hidden; margin: 15px 0;
+            border: 1px solid #2a323d;
+        }
+        .galaxy-star {
+            position: absolute; width: 4px; height: 4px; background: var(--gold);
+            border-radius: 50%; box-shadow: 0 0 6px var(--gold), 0 0 12px var(--gold-light);
+            animation: starGlow 2s ease-in-out infinite;
+        }
+        .galaxy-star.large {
+            width: 6px; height: 6px; background: var(--gold-light);
+            box-shadow: 0 0 8px var(--gold), 0 0 16px var(--gold-light), 0 0 24px var(--gold);
+        }
+        .galaxy-star::before {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 20px; height: 20px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        @keyframes starGlow { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+        .galaxy-line {
+            position: absolute; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            transform-origin: left center; opacity: 0.3;
+        }
+        .galaxy-count {
+            position: absolute; bottom: 5px; right: 10px;
+            font-size: 0.75em; color: var(--gold); font-weight: bold;
+            text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        /* ═══ MODAL ═══ */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.85); z-index: 100; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.3s; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--card-bg); border: 2px solid var(--gold); border-radius: 20px; padding: 30px; max-width: 450px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 0 40px rgba(212, 175, 55, 0.4); }
+        .modal-close { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--gold); font-size: 1.5em; cursor: pointer; }
+        .modal-header { text-align: center; margin-bottom: 20px; }
+
+        .modal-avatar {
+            width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5em; font-weight: bold; color: #000;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border: 3px solid var(--gold); overflow: hidden; position: relative;
+            cursor: pointer; transition: transform 0.3s;
+        }
+        .modal-avatar:hover { transform: scale(1.05); }
+        .modal-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .modal-avatar .upload-hint {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0, 0, 0, 0.7); color: var(--gold); font-size: 0.35em;
+            padding: 6px; text-align: center; opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-avatar:hover .upload-hint { opacity: 1; }
+        .modal-avatar.guest { cursor: default; }
+        .modal-avatar.guest:hover { transform: none; }
+        .modal-avatar.guest .upload-hint { display: none; }
+
+        .modal-name { font-size: 1.4em; color: var(--gold); margin: 5px 0; }
+        .modal-class { color: #888; font-size: 0.9em; }
+        .modal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .modal-stat { background: #0f1318; padding: 12px; border-radius: 10px; text-align: center; }
+        .modal-stat-value { font-size: 1.3em; font-weight: bold; color: var(--gold); }
+        .modal-stat-label { font-size: 0.75em; color: #888; text-transform: uppercase; }
+        .badges-section h3 { color: var(--gold); font-size: 0.95em; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .badges-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .badge-item { background: #0f1318; padding: 6px 12px; border-radius: 15px; font-size: 0.85em; border: 1px solid #2a323d; }
+        .empty-state { text-align: center; padding: 40px; color: #666; }
+
+        .btn-action {
+            width: 100%; padding: 10px; border: none; border-radius: 10px;
+            cursor: pointer; font-weight: bold; font-size: 0.9em; margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .btn-add-star { background: var(--gold); color: #000; }
+        .btn-add-star:hover { background: var(--gold-light); transform: scale(1.02); }
+        .btn-streak { background: linear-gradient(135deg, #ff4500, #ff8c00); color: #fff; }
+        .btn-streak:hover { background: linear-gradient(135deg, #ff8c00, #ffd700); transform: scale(1.02); }
+        .btn-delete { background: #8b0000; color: #fff; }
+        .btn-delete:hover { background: #a00000; }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-action.guest-only { display: none; }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; flex-direction: column; gap: 20px;
+        }
+        .loading-spinner {
+            width: 50px; height: 50px; border: 4px solid var(--gold);
+            border-top-color: transparent; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: var(--gold); font-size: 1.2em; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: var(--card-bg); border: 2px solid var(--gold);
+            color: var(--text-color); padding: 12px 24px; border-radius: 10px;
+            z-index: 10000; animation: slideUp 0.3s ease-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* Login Modal */
+        .login-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9); z-index: 200;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .login-overlay.active { display: flex; }
+        .login-box {
+            background: var(--card-bg); border: 2px solid var(--gold);
+            border-radius: 20px; padding: 30px; max-width: 400px; width: 100%;
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.4);
+            position: relative;
+        }
+        .login-settings-btn {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: 1px solid #2a323d; color: var(--gold);
+            width: 36px; height: 36px; border-radius: 50%;
+            cursor: pointer; font-size: 1.1em;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .login-settings-btn:hover { border-color: var(--gold); background: rgba(212,175,55,0.1); }
+        .login-box h2 { color: var(--gold); text-align: center; margin-bottom: 20px; font-size: 1.5em; }
+        .login-field { margin-bottom: 15px; }
+        .login-field label { display: block; color: var(--gold); font-size: 0.85em; margin-bottom: 6px; font-weight: 600; }
+        .login-field input {
+            width: 100%; padding: 12px; background: #0f1318;
+            border: 1px solid #2a323d; border-radius: 10px;
+            color: var(--text-color); font-size: 1em; outline: none;
+        }
+        .login-field input:focus { border-color: var(--gold); }
+        .btn-login {
+            width: 100%; padding: 12px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #000; border: none; border-radius: 10px;
+            font-weight: bold; font-size: 1em; cursor: pointer; margin-top: 10px;
+        }
+        .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+        .login-error { background: #8b0000; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85em; display: none; }
+        .login-error.show { display: block; }
+        .login-switch { text-align: center; margin-top: 15px; font-size: 0.85em; color: #888; }
+        .login-switch a { color: var(--gold); cursor: pointer; text-decoration: underline; }
+
+        @media (max-width: 500px) {
+            body { padding: 12px; }
+            h1 { font-size: 1.4em; }
+            .header-logo { position: static; display: block; width: 48px; height: 48px; margin: 0 auto 6px; }
+            .avatar { width: 50px; height: 50px; font-size: 1.1em; }
+            .card-murid { padding: 14px; gap: 10px; }
+            .modal-avatar { width: 100px; height: 100px; font-size: 2em; }
+            .galaxy-container { height: 60px; }
+            .auth-bar { position: static; margin-top: 10px; justify-content: center; }
+            .tingkatan-btn { padding: 7px 12px; font-size: 0.78em; }
+            .surah-btn { padding: 7px 10px; font-size: 0.74em; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuatkan data...</div>
+    </div>
+
+    <header>
+        <img class="header-logo" src="./logo-al-sajdah-transparent.png" alt="Logo Al-Sajdah Legend" onerror="this.style.display='none'">
+        <h1>Al-Sajdah Legend</h1>
+        <p class="subtitle">Jejak Hafazan • Dashboard</p>
+        <div class="auth-bar" id="authBar"></div>
+    </header>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- ═══ FILTER PANEL: TINGKATAN & SURAH ═══ -->
+    <div class="filter-panel">
+        <div class="filter-panel-title">📚 Tapis mengikut Tingkatan & Surah</div>
+
+        <div class="tingkatan-row" id="tingkatanRow">
+            <button class="tingkatan-btn" data-ting="all" onclick="setTingkatan('all', this)">Semua</button>
+            <button class="tingkatan-btn" data-ting="1" onclick="setTingkatan('1', this)">Tingkatan 1</button>
+            <button class="tingkatan-btn" data-ting="2" onclick="setTingkatan('2', this)">Tingkatan 2</button>
+            <button class="tingkatan-btn" data-ting="3" onclick="setTingkatan('3', this)">Tingkatan 3</button>
+            <button class="tingkatan-btn" data-ting="4" onclick="setTingkatan('4', this)">Tingkatan 4</button>
+            <button class="tingkatan-btn" data-ting="5" onclick="setTingkatan('5', this)">Tingkatan 5</button>
+        </div>
+
+        <div class="surah-row" id="surahRow"></div>
+
+        <div class="active-filter-bar" id="activeFilterBar">
+            <span style="color:#888;">Menapis:</span>
+            <span class="filter-crumb" id="filterCrumbTing"></span>
+            <span class="filter-crumb" id="filterCrumbSurah" style="display:none;"></span>
+            <span class="filter-crumb-clear" title="Kosongkan tapis" onclick="clearAllFilters()">✕ Kosongkan</span>
+            <span class="murid-count-badge" id="muridCountBadge">0 murid</span>
+        </div>
+    </div>
+
+    <!-- ═══ RANK FILTER & SEARCH ═══ -->
+    <div class="controls">
+        <input type="search" class="search-box" id="searchBox" name="murid-search" autocomplete="off" placeholder="🔍 Cari nama murid..." aria-label="Cari nama murid">
+        <button type="button" id="refreshBtn" onclick="refreshData()" title="Muat semula data">🔄</button>
+        <div class="filter-group" id="filterGroup">
+            <button class="filter-btn active" data-rank="all">Semua Rank</button>
+            <button class="filter-btn" data-rank="mythic">MYTHIC</button>
+            <button class="filter-btn" data-rank="legend">LEGEND</button>
+            <button class="filter-btn" data-rank="diamond">EPIC</button>
+            <button class="filter-btn" data-rank="gold">GRANDMASTER</button>
+            <button class="filter-btn" data-rank="silver">MASTER</button>
+            <button class="filter-btn" data-rank="bronze">ELITE</button>
+        </div>
+    </div>
+
+    <!-- Section header (shown when surah selected) -->
+    <div id="sectionHeader" style="display:none;"></div>
+
+    <div id="muridList"></div>
+
+    <!-- Modal Detail Murid -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Login/Register Modal -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <button class="login-settings-btn" onclick="openSettingsModal()" title="Tetapan Supabase">⚙️</button>
+            <h2 id="loginTitle">🔐 Login Guru</h2>
+            <div class="login-error" id="loginError"></div>
+            <div id="loginForm">
+                <div class="login-field">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="guru@sekolah.edu.my">
+                </div>
+                <div class="login-field">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                </div>
+                <button class="btn-login" id="btnLoginSubmit" onclick="handleLogin()">Login</button>
+                <div class="login-switch">Belum ada akaun? <a onclick="showRegister()">Daftar di sini</a></div>
+            </div>
+            <div id="registerForm" style="display: none;">
+                <div class="login-field">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" placeholder="guru@sekolah.edu.my">
+                </div>
+                <div class="login-field">
+                    <label>Password (min 6 aksara)</label>
+                    <input type="password" id="regPassword" placeholder="••••••••">
+                </div>
+                <button class="btn-login" id="btnRegSubmit" onclick="handleRegister()">Daftar Akaun</button>
+                <div class="login-switch">Sudah ada akaun? <a onclick="showLogin()">Login di sini</a></div>
+            </div>
+            <div class="login-switch" style="margin-top: 20px;">
+                <a onclick="closeLoginModal()">← Kembali ke Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tetapan Supabase (untuk guru yang telah login) -->
+    <div class="login-overlay" id="settingsOverlay">
+        <div class="login-box">
+            <h2>⚙️ Tetapan Supabase</h2>
+            <div class="login-error" id="settingsError"></div>
+            <div class="login-field">
+                <label>Supabase Project URL</label>
+                <input type="url" id="settingsSupabaseUrl" placeholder="https://projek.supabase.co" autocomplete="url">
+            </div>
+            <div class="login-field">
+                <label>Anon / Publishable Key</label>
+                <input type="password" id="settingsSupabaseKey" placeholder="eyJ..." autocomplete="off">
+            </div>
+            <p style="color:#aaa;font-size:0.8em;line-height:1.5;margin:4px 0 12px;">Konfigurasi disimpan pada pelayar ini sahaja. Anda perlu login semula selepas menukar projek Supabase.</p>
+            <button class="btn-login" id="btnSaveSettings" onclick="saveSupabaseSettings()">Simpan & Uji Sambungan</button>
+            <div class="login-switch" style="margin-top: 20px;"><a onclick="closeSettingsModal()">← Kembali ke Dashboard</a></div>
+        </div>
+    </div>
+
+    <input type="file" id="fotoInput" accept="image/*" style="display: none;">
+
+    <script>
+        // ═══════════════════════════════════
+        // SURAH DATA MENGIKUT TINGKATAN
+        // ═══════════════════════════════════
+        const SURAH_BY_TINGKATAN = {
+            '1': [
+                { value: 'As-Sajdah',  label: 'As-Sajdah',  arabic: 'سورة السجدة', totalAyat: 30, emoji: '🌙' },
+                { value: 'Al-Insan',   label: 'Al-Insan',   arabic: 'سورة الإنسان', totalAyat: 31, emoji: '🌿' },
+                { value: "Al-A'la",    label: "Al-A'la",    arabic: 'سورة الأعلى',  totalAyat: 19, emoji: '⬆️' },
+                { value: 'Al-Ghasiyah', label: 'Al-Ghasiyah', arabic: 'سورة الغاشية', totalAyat: 26, emoji: '🌌' },
+            ],
+            '2': [
+                { value: 'Al-Waqiah',  label: 'Al-Waqiah',  arabic: 'سورة الواقعة', totalAyat: 96, emoji: '⭐' },
+                { value: 'Nuh',        label: 'Nuh',         arabic: 'سورة نوح',    totalAyat: 28, emoji: '🌊' },
+            ],
+            '3': [
+                { value: 'As-Saff',    label: 'As-Saff',    arabic: 'سورة الصف',   totalAyat: 14, emoji: '🛡️' },
+                { value: "Al-Jumu'ah", label: "Al-Jumu'ah", arabic: "سورة الجمعة", totalAyat: 11, emoji: '🕌' },
+            ],
+            '4': [
+                { value: 'Yasin',        label: 'Yasin',        arabic: 'سورة يس',           totalAyat: 83, emoji: '💫' },
+                { value: 'Al-Munafiqun', label: 'Al-Munafiqun', arabic: 'سورة المنافقون',    totalAyat: 11, emoji: '📖' },
+            ],
+            '5': [
+                { value: 'Al-Mulk',   label: 'Al-Mulk',    arabic: 'سورة الملك',   totalAyat: 30, emoji: '👑' },
+            ],
+        };
+
+        function getSurahInfo(surahValue) {
+            for (const ting of Object.values(SURAH_BY_TINGKATAN)) {
+                const found = ting.find(s => s.value === surahValue);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        // ═══════════════════════════════════
+        // SUPABASE CONFIG
+        // ═══════════════════════════════════
+        const DEFAULT_SUPABASE_URL = '';
+        const DEFAULT_SUPABASE_ANON_KEY = '';
+        const SUPABASE_CONFIG_KEY = 'alSajdahSupabaseConfig';
+        const TABLE_NAME = 'hafazan_records';
+        const STORAGE_BUCKET = 'foto-murid';
+
+        function getSupabaseConfig() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY));
+                if (saved && saved.url && saved.anonKey) return saved;
+            } catch (e) { localStorage.removeItem(SUPABASE_CONFIG_KEY); }
+            return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
+        }
+        let supabaseClient;
+        let authSubscription;
+        function createSupabaseClient(config = getSupabaseConfig()) {
+            if (authSubscription) authSubscription.unsubscribe();
+            supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+            authSubscription = supabaseClient.auth.onAuthStateChange(handleAuthStateChange).data.subscription;
+        }
+
+        // ═══════════════════════════════════
+        // INDEXEDDB
+        // ═══════════════════════════════════
+        const DB_NAME = 'AlSajdahOfflineDB';
+        const DB_VERSION = 2;
+        const STORE_MURID = 'muridData';
+        const STORE_PENDING = 'pendingChangesV2';
+        const STORE_PENDING_LEGACY = 'pendingChanges';
+
+        function openDB() {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(STORE_MURID)) db.createObjectStore(STORE_MURID, { keyPath: 'id' });
+              if (!db.objectStoreNames.contains(STORE_PENDING_LEGACY)) {
+                const s = db.createObjectStore(STORE_PENDING_LEGACY, { keyPath: 'id', autoIncrement: true });
+                s.createIndex('timestamp', 'timestamp', { unique: false });
+              }
+              if (!db.objectStoreNames.contains(STORE_PENDING)) {
+                const s = db.createObjectStore(STORE_PENDING, { keyPath: 'id', autoIncrement: true });
+                s.createIndex('timestamp', 'timestamp', { unique: false });
+              }
+            };
+          });
+        }
+        function waitForTransaction(tx) {
+          return new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+        }
+        async function saveDataToDB(data) {
+          const db = await openDB();
+          const tx = db.transaction(STORE_MURID, 'readwrite');
+          const store = tx.objectStore(STORE_MURID);
+          for (const item of data) store.put(item);
+          await waitForTransaction(tx);
+        }
+        async function loadDataFromDB() {
+          const db = await openDB();
+          const tx = db.transaction(STORE_MURID, 'readonly');
+          return new Promise((resolve) => {
+            const r = tx.objectStore(STORE_MURID).getAll();
+            r.onsuccess = () => resolve(r.result);
+            r.onerror = () => resolve([]);
+          });
+        }
+        async function addPendingChange(change) {
+          const db = await openDB();
+          const tx = db.transaction(STORE_PENDING, 'readwrite');
+          const { id: recordId, ...rest } = change;
+          tx.objectStore(STORE_PENDING).add({ ...rest, recordId, timestamp: Date.now() });
+          await waitForTransaction(tx);
+        }
+        async function getPendingChanges() {
+          const db = await openDB();
+          const getAll = (name) => new Promise((resolve) => {
+            const tx = db.transaction(name, 'readonly');
+            const r = tx.objectStore(name).getAll();
+            r.onsuccess = () => resolve(r.result);
+            r.onerror = () => resolve([]);
+          });
+          const current = (await getAll(STORE_PENDING)).map(c => ({ ...c, queueStore: STORE_PENDING }));
+          const legacy = db.objectStoreNames.contains(STORE_PENDING_LEGACY)
+            ? (await getAll(STORE_PENDING_LEGACY)).map(c => ({ ...c, recordId: c.id, queueStore: STORE_PENDING_LEGACY }))
+            : [];
+          return [...legacy, ...current].sort((a, b) => a.timestamp - b.timestamp);
+        }
+        async function removePendingChange(change) {
+          const db = await openDB();
+          const tx = db.transaction(change.queueStore, 'readwrite');
+          tx.objectStore(change.queueStore).delete(change.id);
+          return waitForTransaction(tx);
+        }
+        async function syncPendingChanges() {
+          const pending = await getPendingChanges();
+          if (!pending.length) return;
+          showToast('🔄 Menyinkronkan data...');
+          let failed = 0;
+          for (const change of pending) {
+            try {
+              let res;
+              if (change.method === 'POST') res = await supabaseClient.from(TABLE_NAME).insert(change.body).select();
+              else if (change.method === 'PUT') res = await supabaseClient.from(TABLE_NAME).update(change.body).eq('id', change.recordId);
+              else if (change.method === 'DELETE') res = await supabaseClient.from(TABLE_NAME).delete().eq('id', change.recordId);
+              if (res && res.error) throw res.error;
+              await removePendingChange(change);
+            } catch (e) { failed++; }
+          }
+          if (failed) { showToast(`${failed} perubahan masih menunggu sync`); return; }
+          showToast('✅ Sinkronisasi selesai');
+          await loadMuridData();
+        }
+        function isOnline() { return navigator.onLine; }
+
+        // ═══════════════════════════════════
+        // AUTH
+        // ═══════════════════════════════════
+        let currentUser = null;
+        let isLoggedIn = false;
+
+        async function checkAuth() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) { currentUser = session.user; isLoggedIn = true; }
+            updateAuthUI();
+        }
+        function handleAuthStateChange(event, session) {
+            if (event === 'SIGNED_IN') { currentUser = session.user; isLoggedIn = true; showToast('✅ Login berjaya!'); }
+            else if (event === 'SIGNED_OUT') { currentUser = null; isLoggedIn = false; showToast('👋 Anda telah logout'); }
+            updateAuthUI();
+            if (currentModalIndex !== null) showModal(currentModalIndex);
+        }
+        function updateAuthUI() {
+            const bar = document.getElementById('authBar');
+            if (isLoggedIn && currentUser) {
+                const email = currentUser.email;
+                const short = email.length > 20 ? email.substring(0, 20) + '...' : email;
+                bar.innerHTML = `<span class="auth-status">👤 ${short}</span><button class="btn-auth" onclick="openSettingsModal()">⚙️ Tetapan</button><button class="btn-auth logout" onclick="handleLogout()">Logout</button>`;
+            } else {
+                bar.innerHTML = `<button class="btn-auth" onclick="showLoginModal()">🔐 Login Guru</button>`;
+            }
+        }
+        function showLoginModal() { document.getElementById('loginOverlay').classList.add('active'); showLogin(); }
+        function closeLoginModal() { document.getElementById('loginOverlay').classList.remove('active'); document.getElementById('loginError').classList.remove('show'); }
+        function openSettingsModal() {
+            const config = getSupabaseConfig();
+            document.getElementById('settingsSupabaseUrl').value = config.url;
+            document.getElementById('settingsSupabaseKey').value = config.anonKey;
+            document.getElementById('settingsError').classList.remove('show');
+            document.getElementById('settingsOverlay').classList.add('active');
+        }
+        function closeSettingsModal() { document.getElementById('settingsOverlay').classList.remove('active'); }
+        async function saveSupabaseSettings() {
+            const url = document.getElementById('settingsSupabaseUrl').value.trim().replace(/\/$/, '');
+            const anonKey = document.getElementById('settingsSupabaseKey').value.trim();
+            const button = document.getElementById('btnSaveSettings');
+            const errorBox = document.getElementById('settingsError');
+            if (!/^https:\/\/[^\s]+\.supabase\.co$/i.test(url) || !anonKey) {
+                errorBox.textContent = 'Masukkan URL projek Supabase yang sah dan Anon Key.';
+                errorBox.classList.add('show');
+                return;
+            }
+            button.disabled = true; button.textContent = 'Menguji sambungan...'; errorBox.classList.remove('show');
+            try {
+                const testClient = window.supabase.createClient(url, anonKey);
+                const { error } = await testClient.from(TABLE_NAME).select('id').limit(1);
+                if (error) throw error;
+                localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url, anonKey }));
+                currentUser = null; isLoggedIn = false;
+                createSupabaseClient({ url, anonKey });
+                updateAuthUI();
+                closeSettingsModal();
+                showToast('✅ Tetapan disimpan. Sila login semula.');
+                await loadMuridData();
+            } catch (err) {
+                errorBox.textContent = 'Sambungan gagal: ' + (err.message || 'Sila semak URL, Anon Key dan akses jadual.');
+                errorBox.classList.add('show');
+            } finally { button.disabled = false; button.textContent = 'Simpan & Uji Sambungan'; }
+        }
+        function showLogin() { document.getElementById('loginForm').style.display = 'block'; document.getElementById('registerForm').style.display = 'none'; document.getElementById('loginTitle').textContent = '🔐 Login Guru'; }
+        function showRegister() { document.getElementById('loginForm').style.display = 'none'; document.getElementById('registerForm').style.display = 'block'; document.getElementById('loginTitle').textContent = '📝 Daftar Akaun Guru'; }
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('btnLoginSubmit');
+            const errDiv = document.getElementById('loginError');
+            if (!email || !password) { errDiv.textContent = 'Sila masukkan email dan password'; errDiv.classList.add('show'); return; }
+            btn.disabled = true; btn.textContent = 'Logging in...'; errDiv.classList.remove('show');
+            try {
+                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                closeLoginModal();
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+            } catch (err) { errDiv.textContent = 'Login gagal: ' + err.message; errDiv.classList.add('show'); btn.disabled = false; btn.textContent = 'Login'; }
+        }
+        async function handleRegister() {
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const btn = document.getElementById('btnRegSubmit');
+            const errDiv = document.getElementById('loginError');
+            if (!email || !password) { errDiv.textContent = 'Sila masukkan email dan password'; errDiv.classList.add('show'); return; }
+            if (password.length < 6) { errDiv.textContent = 'Password mesti sekurang-kurangnya 6 aksara'; errDiv.classList.add('show'); return; }
+            btn.disabled = true; btn.textContent = 'Mendaftar...'; errDiv.classList.remove('show');
+            try {
+                const { error } = await supabaseClient.auth.signUp({ email, password });
+                if (error) throw error;
+                errDiv.style.background = '#1B7A3A';
+                errDiv.textContent = '✅ Pendaftaran berjaya! Sila check email untuk verification link.';
+                errDiv.classList.add('show');
+                setTimeout(() => { showLogin(); errDiv.style.background = '#8b0000'; errDiv.classList.remove('show'); }, 3000);
+            } catch (err) { errDiv.textContent = 'Pendaftaran gagal: ' + err.message; errDiv.classList.add('show'); }
+            finally { btn.disabled = false; btn.textContent = 'Daftar Akaun'; }
+        }
+        async function handleLogout() { if (confirm('Logout dari sistem?')) await supabaseClient.auth.signOut(); }
+        document.getElementById('loginOverlay').addEventListener('click', (e) => { if (e.target.id === 'loginOverlay') closeLoginModal(); });
+        document.getElementById('settingsOverlay').addEventListener('click', (e) => { if (e.target.id === 'settingsOverlay') closeSettingsModal(); });
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && document.getElementById('loginOverlay').classList.contains('active')) {
+                document.getElementById('loginForm').style.display !== 'none' ? handleLogin() : handleRegister();
+            }
+        });
+
+        // ═══════════════════════════════════
+        // DATA
+        // ═══════════════════════════════════
+        let muridData = [];
+        let currentModalIndex = null;
+        const fotoInput = document.getElementById('fotoInput');
+
+        // ═══════════════════════════════════
+        // TINGKATAN / SURAH FILTER STATE
+        // ═══════════════════════════════════
+        let activeTingkatan = 'all';
+        let activeSurah = null;
+
+        function setTingkatan(ting, btn) {
+            activeTingkatan = ting;
+            activeSurah = null;
+
+            // Update button states
+            document.querySelectorAll('.tingkatan-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Render surah buttons
+            renderSurahButtons(ting);
+            updateActiveFilterBar();
+            updateSectionHeader();
+            applyFilters();
+        }
+
+        function setSurah(surahVal) {
+            activeSurah = (activeSurah === surahVal) ? null : surahVal; // toggle
+            document.querySelectorAll('.surah-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.surah === activeSurah);
+            });
+            updateActiveFilterBar();
+            updateSectionHeader();
+            applyFilters();
+        }
+
+        function renderSurahButtons(ting) {
+            const row = document.getElementById('surahRow');
+            if (ting === 'all' || !SURAH_BY_TINGKATAN[ting]) {
+                row.innerHTML = '';
+                row.classList.remove('visible');
+                return;
+            }
+            const surahs = SURAH_BY_TINGKATAN[ting];
+            row.innerHTML = surahs.map(s => `
+                <button class="surah-btn ${activeSurah === s.value ? 'active' : ''}" 
+                        data-surah="${s.value}" 
+                        onclick="setSurah('${s.value}')">
+                    <span>${s.emoji}</span>
+                    <span>${s.label}</span>
+                    <span class="surah-arabic">${s.arabic}</span>
+                </button>
+            `).join('');
+            row.classList.add('visible');
+        }
+
+        function updateActiveFilterBar() {
+            const bar = document.getElementById('activeFilterBar');
+            const crumbTing = document.getElementById('filterCrumbTing');
+            const crumbSurah = document.getElementById('filterCrumbSurah');
+
+            if (activeTingkatan === 'all') {
+                bar.classList.remove('visible');
+                return;
+            }
+
+            crumbTing.textContent = '📚 Tingkatan ' + activeTingkatan;
+            bar.classList.add('visible');
+
+            if (activeSurah) {
+                const info = getSurahInfo(activeSurah);
+                crumbSurah.textContent = (info ? info.emoji + ' ' : '') + activeSurah;
+                crumbSurah.style.display = 'flex';
+            } else {
+                crumbSurah.style.display = 'none';
+            }
+        }
+
+        function updateSectionHeader() {
+            const el = document.getElementById('sectionHeader');
+            if (!activeSurah) { el.style.display = 'none'; return; }
+
+            const info = getSurahInfo(activeSurah);
+            if (!info) { el.style.display = 'none'; return; }
+
+            // Compute stats for this surah
+            const filtered = muridData.filter(m => normalizeSurahMatch(m.surah, activeSurah));
+            const avg = filtered.length ? Math.round(filtered.reduce((s, m) => s + m.peratus, 0) / filtered.length) : 0;
+            const totalBintang = filtered.reduce((s, m) => s + m.bintang, 0);
+
+            el.style.display = 'block';
+            el.innerHTML = `
+                <div class="section-header">
+                    <div class="section-header-icon">${info.emoji}</div>
+                    <div class="section-header-info">
+                        <div class="section-header-surah">Surah ${info.label}</div>
+                        <div class="section-header-arabic">${info.arabic}</div>
+                        <div class="section-header-meta">Tingkatan ${activeTingkatan} • ${info.totalAyat} Ayat • ${filtered.length} Murid</div>
+                    </div>
+                    <div class="section-avg-bar">
+                        <div class="section-avg-value">${avg}%</div>
+                        <div class="section-avg-label">Purata</div>
+                        <div style="font-size:0.78em; color:#888; margin-top:2px;">⭐ ${totalBintang} bintang</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function clearAllFilters() {
+            activeTingkatan = 'all';
+            activeSurah = null;
+            document.querySelectorAll('.tingkatan-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.tingkatan-btn[data-ting="all"]').classList.add('active');
+            document.getElementById('surahRow').innerHTML = '';
+            document.getElementById('surahRow').classList.remove('visible');
+            document.getElementById('activeFilterBar').classList.remove('visible');
+            document.getElementById('sectionHeader').style.display = 'none';
+            applyFilters();
+        }
+
+        // Normalize surah matching (handle different stored formats)
+        function normalizeSurahMatch(storedSurah, filterSurah) {
+            if (!storedSurah || !filterSurah) return false;
+            const a = storedSurah.toLowerCase().replace(/['\-\s]/g, '');
+            const b = filterSurah.toLowerCase().replace(/['\-\s]/g, '');
+            return a === b || a.includes(b) || b.includes(a);
+        }
+
+        // ═══════════════════════════════════
+        // HELPERS
+        // ═══════════════════════════════════
+        function getRank(peratus) {
+            if (peratus >= 96) return { name: "MYTHIC", class: "mythic" };
+            if (peratus >= 81) return { name: "LEGEND", class: "legend" };
+            if (peratus >= 61) return { name: "EPIC", class: "diamond" };
+            if (peratus >= 41) return { name: "GRANDMASTER", class: "gold" };
+            if (peratus >= 21) return { name: "MASTER", class: "silver" };
+            return { name: "ELITE", class: "bronze" };
+        }
+        function getInitial(nama) {
+            return nama.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+        }
+        function formatSurahAyat(m) {
+            const surah = (m.surah && m.surah !== '-') ? m.surah : '';
+            const lastAyat = (m.last_ayat && m.last_ayat !== '-') ? m.last_ayat : '';
+            if (surah && lastAyat) return surah + ' (Ayat ' + lastAyat + ')';
+            if (lastAyat) return 'Ayat ' + lastAyat;
+            if (surah) return surah;
+            return m.ayat && m.ayat !== '-' ? 'Ayat ' + m.ayat : '-';
+        }
+        function showToast(message, duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), duration);
+        }
+        function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+        function normalizeData(data) {
+            return data.map(row => ({
+                id: row.id,
+                nama: row.nama_murid || row.nama || 'Tanpa Nama',
+                kelas: row.kelas || '-',
+                tingkatan: row.tingkatan || null,
+                surah: row.surah || '-',
+                ayat: row.ayat || '-',
+                last_ayat: row.last_ayat || '-',
+                peratus: row.peratus || 0,
+                streak: row.streak || 0,
+                xp: row.xp || 0,
+                bintang: row.bintang || 0,
+                foto_url: row.foto_url,
+                tarikh: row.tarikh || null,
+                lencana: Array.isArray(row.lencana) ? row.lencana : (typeof row.lencana === 'string' ? JSON.parse(row.lencana) : [])
+            }));
+        }
+
+        // ═══════════════════════════════════
+        // LOAD DATA
+        // ═══════════════════════════════════
+        async function loadMuridData() {
+          showLoading(true);
+          try {
+            if (!isOnline()) {
+              muridData = await loadDataFromDB();
+              if (muridData.length > 0) { renderStats(); applyFilters(); showToast('📱 Mod luar talian - data dari cache'); }
+              else showToast('❌ Tiada data offline. Sila hubungi internet.');
+              return;
+            }
+            const { data, error } = await supabaseClient.from(TABLE_NAME).select('*').order('peratus', { ascending: false });
+            if (error) throw error;
+            muridData = normalizeData(data || []);
+            await saveDataToDB(muridData);
+            if (muridData.length === 0) await seedDefaultData();
+            renderStats();
+            applyFilters();
+            updateSectionHeader();
+          } catch (error) {
+            console.error('Error loading data:', error);
+            muridData = await loadDataFromDB();
+            if (muridData.length > 0) { renderStats(); applyFilters(); showToast('⚠️ Menggunakan data cache'); }
+            else showToast('❌ Gagal memuatkan data: ' + error.message);
+          } finally { showLoading(false); }
+        }
+
+        async function seedDefaultData() {
+            const defaultData = [
+                { nama_murid: "Ahmad bin Ali", kelas: "1 As-Sajdah", tingkatan: "1", surah: "As-Sajdah", peratus: 98, streak: 45, xp: 2850, bintang: 42, lencana: ["🏆 Hafiz Muda", "🔥 Streak Master"] },
+                { nama_murid: "Siti Aisyah binti Hassan", kelas: "1 Al-Insan", tingkatan: "1", surah: "Al-Insan", peratus: 92, streak: 30, xp: 2400, bintang: 35, lencana: ["💎 Diamond Hafiz"] },
+                { nama_murid: "Muhammad Farhan", kelas: "1 As-Sajdah", tingkatan: "1", surah: "As-Sajdah", peratus: 75, streak: 12, xp: 1200, bintang: 18, lencana: ["⭐ Rajin Belajar"] },
+                { nama_murid: "Nur Hidayah binti Yusof", kelas: "2 Al-Waqiah", tingkatan: "2", surah: "Al-Waqiah", peratus: 88, streak: 22, xp: 1900, bintang: 28, lencana: ["🔥 Streak Master"] },
+                { nama_murid: "Abdullah bin Ibrahim", kelas: "2 Nuh", tingkatan: "2", surah: "Nuh", peratus: 62, streak: 8, xp: 900, bintang: 12, lencana: [] },
+                { nama_murid: "Fatimah binti Malik", kelas: "3 As-Saff", tingkatan: "3", surah: "As-Saff", peratus: 97, streak: 60, xp: 3200, bintang: 55, lencana: ["🏆 Hafiz Muda", "🔥 Streak Master", "⭐ Top 3"] },
+            ];
+            try {
+                const { data, error } = await supabaseClient.from(TABLE_NAME).insert(defaultData).select();
+                if (error) throw error;
+                muridData = normalizeData(data);
+                renderStats(); applyFilters();
+                showToast('✅ Data default dimuatkan');
+            } catch (error) { console.error('Error seeding:', error); showToast('❌ Gagal muat data default: ' + error.message); }
+        }
+
+        async function refreshData() { showLoading(true); try { await loadMuridData(); } finally { showLoading(false); } }
+
+        function setupRealtime() {
+            supabaseClient.channel('hafazan-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME }, () => refreshData())
+                .subscribe();
+        }
+
+        // ═══════════════════════════════════
+        // RENDER
+        // ═══════════════════════════════════
+        function renderAvatar(murid) {
+            const initial = getInitial(murid.nama);
+            if (murid.foto_url) {
+                return `<div class="avatar"><img src="${murid.foto_url}" alt="${murid.nama}" onerror="this.parentElement.innerHTML='${initial}'"></div>`;
+            }
+            return `<div class="avatar">${initial}</div>`;
+        }
+
+        function renderGalaxy(bintangCount) {
+            const maxStars = Math.min(bintangCount, 30);
+            let html = '<div class="galaxy-container">';
+            const starPositions = [];
+            for (let i = 0; i < maxStars; i++) {
+                const x = Math.random() * 90 + 5, y = Math.random() * 70 + 10;
+                const isLarge = i < 3, delay = Math.random() * 2;
+                starPositions.push({ x, y });
+                html += `<div class="galaxy-star ${isLarge ? 'large' : ''}" style="left:${x}%;top:${y}%;animation-delay:${delay}s;"></div>`;
+            }
+            for (let i = 0; i < starPositions.length - 1; i++) {
+                for (let j = i + 1; j < starPositions.length; j++) {
+                    const dx = starPositions[j].x - starPositions[i].x, dy = starPositions[j].y - starPositions[i].y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 25) {
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        html += `<div class="galaxy-line" style="left:${starPositions[i].x}%;top:${starPositions[i].y}%;width:${dist}%;transform:rotate(${angle}deg);"></div>`;
+                    }
+                }
+            }
+            html += `<div class="galaxy-count">⭐ ${bintangCount} Bintang</div></div>`;
+            return html;
+        }
+
+        function renderMurid(list) {
+            const container = document.getElementById('muridList');
+            // Update count badge
+            const badge = document.getElementById('muridCountBadge');
+            if (badge) badge.textContent = list.length + ' murid';
+
+            if (!list.length) {
+                container.innerHTML = '<div class="empty-state">Tiada murid ditemui 📭</div>';
+                return;
+            }
+            container.innerHTML = list.map((m, i) => {
+                const rank = getRank(m.peratus);
+                const originalIndex = muridData.findIndex(x => x.id === m.id);
+                const posClass = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
+                const posLabel = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+
+                // Surah tag (show when not filtering by specific surah)
+                const surahInfo = getSurahInfo(m.surah);
+                const surahTag = (!activeSurah && m.surah && m.surah !== '-')
+                    ? `<span class="surah-tag">${surahInfo ? surahInfo.emoji : '📖'} ${m.surah}</span>`
+                    : '';
+
+                return `
+                    <div class="card-murid rank-${rank.class}" onclick="showModal(${originalIndex})" style="animation-delay:${i*0.05}s">
+                        <span class="rank-position ${posClass}">${posLabel}</span>
+                        ${renderAvatar(m)}
+                        <div class="progress-container">
+                            <div class="name-row">
+                                <div>
+                                    <div class="murid-name">${m.nama}</div>
+                                    <div class="murid-kelas">${m.kelas}${m.tingkatan ? ' • T' + m.tingkatan : ''}</div>
+                                </div>
+                                <span class="rank-badge rank-${rank.class}">${rank.name}</span>
+                            </div>
+                            <div class="bar-bg">
+                                <div class="bar-fill bar-${rank.class}" style="width:${m.peratus}%"></div>
+                            </div>
+                            <div class="info-row">
+                                <span>
+                                    📖 ${formatSurahAyat(m)}
+                                    ${surahTag}
+                                </span>
+                                <span class="stats-mini">
+                                    <span>⭐ ${m.bintang}</span>
+                                    <span>🔥 ${m.streak}</span>
+                                    <span>${m.peratus}%</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStats() {
+            const total = muridData.length;
+            const avg = total > 0 ? Math.round(muridData.reduce((s, m) => s + m.peratus, 0) / total) : 0;
+            const topStreak = total > 0 ? Math.max(...muridData.map(m => m.streak)) : 0;
+            const mythicCount = muridData.filter(m => m.peratus >= 96).length;
+            const totalBintang = muridData.reduce((s, m) => s + m.bintang, 0);
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat-box"><div class="stat-value">${total}</div><div class="stat-label">Jumlah Murid</div></div>
+                <div class="stat-box"><div class="stat-value">${avg}%</div><div class="stat-label">Purata Hafazan</div></div>
+                <div class="stat-box"><div class="stat-value">⭐ ${totalBintang}</div><div class="stat-label">Total Bintang</div></div>
+                <div class="stat-box"><div class="stat-value">${mythicCount}</div><div class="stat-label">Mythic Rank</div></div>
+                <div class="stat-box"><div class="stat-value">🔥 ${topStreak}</div><div class="stat-label">Top Streak</div></div>
+            `;
+        }
+
+        // ═══════════════════════════════════
+        // MODAL
+        // ═══════════════════════════════════
+        function showModal(index) {
+            currentModalIndex = index;
+            const m = muridData[index];
+            const rank = getRank(m.peratus);
+            const initial = getInitial(m.nama);
+            const canEdit = isLoggedIn;
+            const avatarClass = canEdit ? '' : 'guest';
+            const actionBtnClass = canEdit ? '' : 'guest-only';
+            const surahInfo = getSurahInfo(m.surah);
+
+            let avatarHTML = '';
+            if (m.foto_url) {
+                avatarHTML = `<img src="${m.foto_url}" alt="${m.nama}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${initial}'">
+                              ${canEdit ? `<div class="upload-hint">📷 Klik untuk tukar foto</div>` : ''}`;
+            } else {
+                avatarHTML = `${initial}${canEdit ? `<div class="upload-hint">📷 Klik untuk tambah foto</div>` : ''}`;
+            }
+            const lencana = Array.isArray(m.lencana) ? m.lencana : [];
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header">
+                    <div class="modal-avatar ${avatarClass}" ${canEdit ? 'onclick="triggerUpload()"' : ''}>${avatarHTML}</div>
+                    <div class="modal-name">${m.nama}</div>
+                    <div class="modal-class">${m.kelas}${m.tingkatan ? ' • Tingkatan ' + m.tingkatan : ''}</div>
+                    <div style="margin-top:10px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                        <span class="rank-badge rank-${rank.class}">${rank.name}</span>
+                        ${surahInfo ? `<span style="background:rgba(26,58,46,0.7);border:1px solid #2d6a4f;color:#a8e6cf;padding:3px 10px;border-radius:12px;font-size:0.75em;font-weight:700;">${surahInfo.emoji} ${m.surah}</span>` : ''}
+                    </div>
+                    ${!canEdit ? '<div style="margin-top:8px;font-size:0.75em;color:#888;">🔒 Login untuk edit</div>' : ''}
+                </div>
+                <div style="margin:20px 0;">
+                    <h3 style="color:var(--gold);font-size:0.9em;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">🌌 Galaxy Bintang</h3>
+                    ${renderGalaxy(m.bintang)}
+                </div>
+                <div class="modal-stats">
+                    <div class="modal-stat"><div class="modal-stat-value">${m.peratus}%</div><div class="modal-stat-label">Hafazan</div></div>
+                    <div class="modal-stat"><div class="modal-stat-value" style="color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.5);">⭐ ${m.bintang}</div><div class="modal-stat-label">Bintang</div></div>
+                    <div class="modal-stat"><div class="modal-stat-value">🔥 ${m.streak}</div><div class="modal-stat-label">Streak</div></div>
+                </div>
+                <div style="background:#0f1318;padding:15px;border-radius:10px;margin-bottom:15px;text-align:center;">
+                    <div style="color:#888;font-size:0.85em;">Ayat Dihafaz Terkini</div>
+                    <div style="color:var(--gold);font-size:1.2em;font-weight:bold;margin-top:5px;">📖 ${formatSurahAyat(m)}</div>
+                </div>
+                <div class="badges-section">
+                    <h3>🏅 Lencana Diperoleh</h3>
+                    <div class="badges-list">${lencana.map(l => `<div class="badge-item">${l}</div>`).join('') || '<span style="color:#555;font-size:0.85em;">Belum ada lencana</span>'}</div>
+                </div>
+                <button class="btn-action btn-add-star ${actionBtnClass}" onclick="tambahBintang()">➕ Tambah 1 Bintang</button>
+                <button class="btn-action btn-streak ${actionBtnClass}" onclick="tambahStreak()">🔥 Tambah Streak</button>
+                ${m.foto_url && canEdit ? `<button class="btn-action btn-delete" onclick="hapusFoto()">🗑️ Padam Foto</button>` : ''}
+            `;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); currentModalIndex = null; }
+        document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target.id === 'modalOverlay') closeModal(); });
+
+        // ═══════════════════════════════════
+        // UPLOAD / HAPUS FOTO
+        // ═══════════════════════════════════
+        function triggerUpload() {
+            if (!isLoggedIn) { showToast('🔒 Sila login untuk upload foto'); showLoginModal(); return; }
+            if (currentModalIndex !== null) fotoInput.click();
+        }
+        fotoInput.addEventListener('change', async (e) => {
+            if (!isLoggedIn) { showToast('🔒 Sila login dahulu'); return; }
+            const file = e.target.files[0];
+            if (!file || currentModalIndex === null) return;
+            if (file.size > 2 * 1024 * 1024) { showToast('❌ Saiz fail terlalu besar! Maksimum 2MB.'); return; }
+            showLoading(true);
+            const murid = muridData[currentModalIndex];
+            try {
+                if (!isOnline()) { showToast('Foto memerlukan internet.'); return; }
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${murid.id}_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(fileName, file, { cacheControl: '3600', upsert: false });
+                if (uploadError) throw uploadError;
+                const { data: urlData } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
+                const { error: dbError } = await supabaseClient.from(TABLE_NAME).update({ foto_url: urlData.publicUrl }).eq('id', murid.id);
+                if (dbError) throw dbError;
+                muridData[currentModalIndex].foto_url = urlData.publicUrl;
+                await saveDataToDB(muridData);
+                showModal(currentModalIndex);
+                applyFilters();
+                showToast('✅ Foto berjaya dimuat naik');
+            } catch (error) { showToast('❌ Gagal upload foto: ' + error.message); }
+            finally { showLoading(false); fotoInput.value = ''; }
+        });
+
+        async function hapusFoto() {
+            if (!isLoggedIn) { showToast('🔒 Sila login dahulu'); return; }
+            if (currentModalIndex === null || !confirm('Padam foto murid ini?')) return;
+            showLoading(true);
+            const murid = muridData[currentModalIndex];
+            try {
+                if (murid.foto_url) {
+                    const filePath = murid.foto_url.split(`${STORAGE_BUCKET}/`)[1];
+                    if (filePath) await supabaseClient.storage.from(STORAGE_BUCKET).remove([filePath]);
+                }
+                const { error } = await supabaseClient.from(TABLE_NAME).update({ foto_url: null }).eq('id', murid.id);
+                if (error) throw error;
+                muridData[currentModalIndex].foto_url = null;
+                await saveDataToDB(muridData);
+                showModal(currentModalIndex);
+                applyFilters();
+                showToast('✅ Foto berjaya dipadam');
+            } catch (error) { showToast('❌ Gagal padam foto: ' + error.message); }
+            finally { showLoading(false); }
+        }
+
+        // ═══════════════════════════════════
+        // TAMBAH BINTANG / STREAK
+        // ═══════════════════════════════════
+        async function tambahBintang() {
+            if (!isLoggedIn) { showToast('🔒 Sila login untuk tambah bintang'); showLoginModal(); return; }
+            if (currentModalIndex === null) return;
+            const murid = muridData[currentModalIndex];
+            const newBintang = murid.bintang + 1;
+            showLoading(true);
+            try {
+                if (!isOnline()) {
+                    await addPendingChange({ method: 'PUT', id: murid.id, body: { bintang: newBintang } });
+                    muridData[currentModalIndex].bintang = newBintang;
+                    await saveDataToDB(muridData);
+                    showModal(currentModalIndex); applyFilters(); renderStats();
+                    showToast('📱 Bintang ditambah (akan sync bila online)');
+                    return;
+                }
+                const { error } = await supabaseClient.from(TABLE_NAME).update({ bintang: newBintang }).eq('id', murid.id);
+                if (error) throw error;
+                muridData[currentModalIndex].bintang = newBintang;
+                await saveDataToDB(muridData);
+                showModal(currentModalIndex); applyFilters(); renderStats();
+                showToast('⭐ Bintang ditambah!');
+            } catch (error) { showToast('❌ Gagal simpan bintang: ' + error.message); }
+            finally { showLoading(false); }
+        }
+
+        async function tambahStreak() {
+            if (!isLoggedIn) { showToast('🔒 Sila login untuk tambah streak'); showLoginModal(); return; }
+            if (currentModalIndex === null) return;
+            const murid = muridData[currentModalIndex];
+            const today = new Date().toISOString().slice(0, 10);
+            const lastDate = murid.tarikh ? new Date(murid.tarikh).toISOString().slice(0, 10) : null;
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            let newStreak = murid.streak || 0;
+            if (lastDate === today) { showToast('ℹ️ Streak sudah ditambah hari ini'); return; }
+            else if (lastDate === yesterday) newStreak += 1;
+            else newStreak = 1;
+            showLoading(true);
+            try {
+                if (!isOnline()) {
+                    await addPendingChange({ method: 'PUT', id: murid.id, body: { streak: newStreak, tarikh: new Date().toISOString() } });
+                    muridData[currentModalIndex].streak = newStreak;
+                    muridData[currentModalIndex].tarikh = new Date().toISOString();
+                    await saveDataToDB(muridData);
+                    showModal(currentModalIndex); applyFilters(); renderStats();
+                    showToast('📱 Streak ditambah (akan sync bila online)');
+                    return;
+                }
+                const { error } = await supabaseClient.from(TABLE_NAME).update({ streak: newStreak, tarikh: new Date().toISOString() }).eq('id', murid.id);
+                if (error) throw error;
+                muridData[currentModalIndex].streak = newStreak;
+                muridData[currentModalIndex].tarikh = new Date().toISOString();
+                await saveDataToDB(muridData);
+                showModal(currentModalIndex); applyFilters(); renderStats();
+                showToast('🔥 Streak ditambah! (' + newStreak + ' hari)');
+            } catch (error) { showToast('❌ Gagal simpan streak: ' + error.message); }
+            finally { showLoading(false); }
+        }
+
+        // ═══════════════════════════════════
+        // FILTER & SEARCH
+        // ═══════════════════════════════════
+        let currentRank = 'all';
+
+        function applyFilters() {
+            const searchBox = document.getElementById('searchBox');
+            let search = searchBox.value.trim().toLowerCase();
+            if (currentUser && search === currentUser.email.toLowerCase()) {
+                searchBox.value = ''; search = '';
+            }
+
+            let filtered = muridData.filter(m => {
+                // Text search
+                const textMatch = m.nama.toLowerCase().includes(search) || (m.kelas && m.kelas.toLowerCase().includes(search));
+                if (!textMatch) return false;
+
+                // Tingkatan filter
+                if (activeTingkatan !== 'all') {
+                    const mTing = m.tingkatan ? String(m.tingkatan) : null;
+                    if (mTing !== activeTingkatan) return false;
+                }
+
+                // Surah filter
+                if (activeSurah) {
+                    if (!normalizeSurahMatch(m.surah, activeSurah)) return false;
+                }
+
+                // Rank filter
+                if (currentRank !== 'all') {
+                    if (getRank(m.peratus).class !== currentRank) return false;
+                }
+
+                return true;
+            });
+
+            filtered.sort((a, b) => b.peratus - a.peratus || b.bintang - a.bintang || b.streak - a.streak);
+            renderMurid(filtered);
+
+            // Update count badge even when filter bar not visible
+            const badge = document.getElementById('muridCountBadge');
+            if (badge) badge.textContent = filtered.length + ' murid';
+        }
+
+        document.getElementById('searchBox').addEventListener('input', applyFilters);
+        document.getElementById('filterGroup').addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentRank = e.target.dataset.rank;
+                applyFilters();
+            }
+        });
+
+        // ═══════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════
+        checkAuth();
+        loadMuridData();
+        setupRealtime();
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+              reg.addEventListener('updatefound', () => {
+                const nw = reg.installing;
+                nw.addEventListener('statechange', () => {
+                  if (nw.state === 'installed' && navigator.serviceWorker.controller) showToast('🔄 Versi baharu tersedia! Sila muat semula halaman.');
+                });
+              });
+              navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'SYNC_REQUESTED') syncPendingChanges();
+              });
+            })
+            .catch(err => console.error('[App] SW failed:', err));
+        }
+
+        window.addEventListener('online', async () => { showToast('🌐 Kembali dalam talian'); await syncPendingChanges(); await loadMuridData(); });
+        window.addEventListener('offline', () => showToast('📱 Mod luar talian - perubahan akan disimpan'));
+
+        async function registerBackgroundSync() {
+          if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.sync.register('sync-murid-data');
+          }
+        }
+    </script>
+</body>
+</html>
