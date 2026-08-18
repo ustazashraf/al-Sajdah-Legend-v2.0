@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="./icon-192x192.png">
 
     <!-- Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="window.__supabaseReady=true" onerror="window.__supabaseReady=false"></script>
 
     <style>
         :root {
@@ -726,8 +726,8 @@
         // ═══════════════════════════════════
         // SUPABASE CONFIG
         // ═══════════════════════════════════
-        const DEFAULT_SUPABASE_URL = '';
-        const DEFAULT_SUPABASE_ANON_KEY = '';
+        const DEFAULT_SUPABASE_URL = 'https://ozdkphtsipnspiqkppnp.supabase.co';
+        const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96ZGtwaHRzaXBuc3BpcWtwcG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMjgyNTYsImV4cCI6MjEwMTkwNDI1Nn0.LRVQLXY6WcWO_C7glvfejJeGrJCStp2Ge6lRT9eDCpU';
         const SUPABASE_CONFIG_KEY = 'alSajdahSupabaseConfig';
         const TABLE_NAME = 'hafazan_records';
         const STORAGE_BUCKET = 'foto-murid';
@@ -744,6 +744,11 @@
         function createSupabaseClient(config = getSupabaseConfig()) {
             if (!config || !config.url || !config.anonKey) {
                 console.warn('[Supabase] URL atau Anon Key belum diisi.');
+                return;
+            }
+            if (!window.supabase) {
+                console.error('[Supabase] SDK belum dimuatkan. Sila semak sambungan internet dan muat semula halaman.');
+                showToast('❌ Supabase SDK gagal dimuatkan. Sila muat semula halaman.');
                 return;
             }
             if (authSubscription) authSubscription.unsubscribe();
@@ -918,6 +923,7 @@
         function showLogin() { document.getElementById('loginForm').style.display = 'block'; document.getElementById('registerForm').style.display = 'none'; document.getElementById('loginTitle').textContent = '🔐 Login Guru'; }
         function showRegister() { document.getElementById('loginForm').style.display = 'none'; document.getElementById('registerForm').style.display = 'block'; document.getElementById('loginTitle').textContent = '📝 Daftar Akaun Guru'; }
         async function handleLogin() {
+            if (!supabaseClient) { showToast('❌ Sila tunggu sambungan Supabase siap atau muat semula halaman.'); return; }
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('btnLoginSubmit');
@@ -933,6 +939,7 @@
             } catch (err) { errDiv.textContent = 'Login gagal: ' + err.message; errDiv.classList.add('show'); btn.disabled = false; btn.textContent = 'Login'; }
         }
         async function handleRegister() {
+            if (!supabaseClient) { showToast('❌ Sila tunggu sambungan Supabase siap atau muat semula halaman.'); return; }
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
             const btn = document.getElementById('btnRegSubmit');
@@ -950,7 +957,7 @@
             } catch (err) { errDiv.textContent = 'Pendaftaran gagal: ' + err.message; errDiv.classList.add('show'); }
             finally { btn.disabled = false; btn.textContent = 'Daftar Akaun'; }
         }
-        async function handleLogout() { if (confirm('Logout dari sistem?')) await supabaseClient.auth.signOut(); }
+        async function handleLogout() { if (!supabaseClient) return; if (confirm('Logout dari sistem?')) await supabaseClient.auth.signOut(); }
         document.getElementById('loginOverlay').addEventListener('click', (e) => { if (e.target.id === 'loginOverlay') closeLoginModal(); });
         document.getElementById('settingsOverlay').addEventListener('click', (e) => { if (e.target.id === 'settingsOverlay') closeSettingsModal(); });
         document.addEventListener('keypress', (e) => {
@@ -1532,15 +1539,23 @@
         // ═══════════════════════════════════
         // INIT
         // ═══════════════════════════════════
-        createSupabaseClient();
-        checkAuth();
-        loadMuridData();
-        setupRealtime();
+        function initApp() {
+            if (!window.__supabaseReady) {
+                console.warn('[Init] Tunggu Supabase SDK dimuatkan...');
+                setTimeout(initApp, 100);
+                return;
+            }
+            createSupabaseClient();
+            checkAuth();
+            loadMuridData();
+            setupRealtime();
 
-        const savedConfig = getSupabaseConfig();
-        if (!savedConfig.url || !savedConfig.anonKey) {
-            setTimeout(() => openSettingsModal(), 500);
+            const savedConfig = getSupabaseConfig();
+            if (!savedConfig.url || !savedConfig.anonKey) {
+                setTimeout(() => openSettingsModal(), 500);
+            }
         }
+        initApp();
 
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('./sw.js')
