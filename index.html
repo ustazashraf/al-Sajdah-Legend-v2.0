@@ -742,6 +742,10 @@
         let supabaseClient;
         let authSubscription;
         function createSupabaseClient(config = getSupabaseConfig()) {
+            if (!config || !config.url || !config.anonKey) {
+                console.warn('[Supabase] URL atau Anon Key belum diisi.');
+                return;
+            }
             if (authSubscription) authSubscription.unsubscribe();
             supabaseClient = window.supabase.createClient(config.url, config.anonKey);
             authSubscription = supabaseClient.auth.onAuthStateChange(handleAuthStateChange).data.subscription;
@@ -849,9 +853,14 @@
         let isLoggedIn = false;
 
         async function checkAuth() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) { currentUser = session.user; isLoggedIn = true; }
-            updateAuthUI();
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) { currentUser = session.user; isLoggedIn = true; }
+            } catch (e) {
+                console.error('[Auth] checkAuth error:', e);
+            } finally {
+                updateAuthUI();
+            }
         }
         function handleAuthStateChange(event, session) {
             if (event === 'SIGNED_IN') { currentUser = session.user; isLoggedIn = true; showToast('✅ Login berjaya!'); }
@@ -1135,6 +1144,10 @@
         async function loadMuridData() {
           showLoading(true);
           try {
+            if (!supabaseClient) {
+                showToast('⚠️ Sila masukkan Tetapan Supabase dahulu.');
+                return;
+            }
             if (!isOnline()) {
               muridData = await loadDataFromDB();
               if (muridData.length > 0) { renderStats(); applyFilters(); showToast('📱 Mod luar talian - data dari cache'); }
@@ -1178,6 +1191,7 @@
         async function refreshData() { showLoading(true); try { await loadMuridData(); } finally { showLoading(false); } }
 
         function setupRealtime() {
+            if (!supabaseClient) return;
             supabaseClient.channel('hafazan-realtime')
                 .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_NAME }, () => refreshData())
                 .subscribe();
@@ -1518,9 +1532,15 @@
         // ═══════════════════════════════════
         // INIT
         // ═══════════════════════════════════
+        createSupabaseClient();
         checkAuth();
         loadMuridData();
         setupRealtime();
+
+        const savedConfig = getSupabaseConfig();
+        if (!savedConfig.url || !savedConfig.anonKey) {
+            setTimeout(() => openSettingsModal(), 500);
+        }
 
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('./sw.js')
